@@ -19,7 +19,7 @@
     if (!telegram) return {link:"tel:+79877532533", label:"Позвонить менеджеру"};
     const url = new URL("https://t.me/" + telegram);
     if (draft) url.searchParams.set("text", draft);
-    return {link:url.href, label:"Написать Антону Фёдорову в Telegram", external:true};
+    return {link:url.href, label:"Написать Антону Шилову в Telegram", external:true};
   }
 
   function addMessage(text, who, actions = []) {
