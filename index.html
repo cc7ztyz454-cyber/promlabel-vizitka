@@ -3,8 +3,9 @@
 <title>ПромЛейбл — производство этикеток в Нижнем Новгороде</title>
 <meta name="description" content="Этикетки в рулонах, термотрансферные ленты и упаковка от компании «Промышленная этикетка». Подберите позиции по цене и параметрам, соберите заказ или запросите расчёт своего тиража.">
 <meta name="theme-color" content="#182620"><link rel="icon" type="image/svg+xml" href="brand.svg">
-<link rel="stylesheet" href="style.css?v=guide1"><link rel="stylesheet" href="catalog.css"><script defer src="products.js"></script><script defer src="catalog.js?v=guide1"></script>
+<link rel="stylesheet" href="style.css?v=engagement1"><link rel="stylesheet" href="catalog.css"><script defer src="products.js"></script><script defer src="catalog.js?v=guide1"></script>
 <script defer src="guide.js"></script>
+<script defer src="engagement.js"></script>
 </head><body><a class="skip" href="#catalog">Перейти к каталогу</a>
 <header class="site-head"><div class="wrap head-row"><a class="wordmark" href="#top" aria-label="ПромЛейбл — на главную"><img src="brand.svg" width="44" height="44" alt="">ПромЛейбл</a>
 <nav aria-label="Основная навигация"><a href="#catalog">Каталог</a><a href="#production">Производство</a><a href="#contacts">Контакты</a></nav>
@@ -81,7 +82,25 @@
 <section class="production" id="production"><div class="wrap prod-grid"><div><p class="eyebrow"><span class="print-bars" aria-hidden="true"></span>Производство</p><h2>Этикетка под<br>вашу задачу</h2><p class="prod-intro">На собственном оборудовании в Нижнем Новгороде печатаем как переменные данные, так и полноцветные тиражи.</p><a class="btn-primary" href="mailto:zakaz@promlabel52.ru?subject=Индивидуальный%20заказ">Обсудить заказ</a></div>
 <div class="prod-list"><article><h3>Цифровая и флексопечать</h3><p>Для брендированной этикетки подбираем технологию по макету, материалу и объёму партии.</p></article><article><h3>Термоэтикетки и риббоны</h3><p>Для подбора укажите модель принтера, размер этикетки и поверхность, на которую будете её клеить.</p></article><article><h3>Маркировка Data Matrix</h3><p>Выпускаем этикетки с кодами для алкогольной промышленности, в том числе с матовым лаком.</p></article></div></div></section>
 <section class="wrap conditions"><h2>Оплата и доставка</h2><div><h3>Оплата по договору</h3><p>Работаем по безналичному расчёту. Указывайте реквизиты организации при согласовании заказа.</p></div><div><h3>Доставка до терминала</h3><p>Отправляем транспортными компаниями или своим транспортом. При заказе свыше 50 000 ₽ доставку до терминала в вашем городе оплачиваем мы.</p></div></section>
-</main><footer id="contacts"><div class="wrap"><div class="footer-head"><div><p class="eyebrow"><span class="print-bars" aria-hidden="true"></span>Контакты</p><h2>Отдел заказов</h2></div><a class="footer-mail" href="mailto:zakaz@promlabel52.ru">zakaz@promlabel52.ru</a></div>
+<section class="wrap callback-section" id="callback" aria-labelledby="callback-title" hidden>
+  <div>
+    <h2 id="callback-title">Заказать звонок</h2>
+    <p>Оставьте имя и телефон. Менеджер свяжется с вами по вашему вопросу.</p>
+  </div>
+  <form id="callback-form" class="brief-fields">
+    <div class="brief-pair">
+      <label>Имя<input name="name" autocomplete="name" maxlength="80" required></label>
+      <label>Телефон<input name="phone" type="tel" autocomplete="tel" maxlength="26" required></label>
+    </div>
+    <label class="callback-trap" aria-hidden="true">Сайт компании<input name="website" tabindex="-1" autocomplete="off"></label>
+    <label class="callback-consent"><input name="consent" type="checkbox" required>
+      <span>Согласен на обработку имени и телефона для обратного звонка. <a href="/callback-consent.html" target="_blank" rel="noopener">Текст согласия</a></span>
+    </label>
+    <div><button type="submit" class="btn-primary">Жду звонка</button></div>
+    <p class="brief-status" role="status"></p>
+  </form>
+</section>
+</main><footer id="contacts"><div class="wrap"><div class="footer-head"><div><p class="eyebrow"><span class="print-bars" aria-hidden="true"></span>Контакты</p><h2>Отдел заказов</h2></div><a href="#callback" data-callback hidden>Заказать звонок</a><a class="footer-mail" href="mailto:zakaz@promlabel52.ru">zakaz@promlabel52.ru</a></div>
 <div class="footer-grid"><div><h3>Телефоны</h3><a href="tel:+79877532533">+7 (987) 753-25-33</a><a href="tel:+79877534646">+7 (987) 753-46-46</a></div><div><h3>Офис и склад</h3><p>Офис — Нижний Новгород, ул. Эльтонская, 1а</p>
 <p class="warehouse-address">Склад — Нижегородская область, г. Дзержинск, Автозаводское шоссе, 85И</p></div><div><h3>Время работы</h3><p>Пн–пт с 08:00 до 19:00<br>Сб–вс — выходные</p></div></div>
 <section class="warehouse-map" id="warehouse" aria-labelledby="warehouse-title">
@@ -92,4 +111,30 @@
   <iframe title="Склад Промлейбл — Дзержинск, Автозаводское шоссе, 85И" src="https://yandex.ru/map-widget/v1/?ll=43.599948%2C56.263087&amp;z=16&amp;pt=43.599948%2C56.263087%2Cpm2blm" width="1200" height="360" loading="lazy" allowfullscreen></iframe>
 </section>
 <div class="foot-note"><span>Промышленная этикетка</span><span>ИП Шилов Антон Вадимович</span></div></div></footer>
+<aside class="sales-help" data-engagement="preview">
+  <button type="button" class="sales-launch" data-chat-open hidden>Помощь с подбором</button>
+  <dialog class="sales-dialog" aria-labelledby="sales-title">
+    <div class="sales-head">
+      <h2 id="sales-title">Помощник ПромЛейбл</h2>
+      <form method="dialog"><button type="submit" class="sales-close" aria-label="Закрыть чат">×</button></form>
+    </div>
+    <p class="sales-intro">Подскажу по этикеткам, риббонам, печати и доставке.</p>
+    <div class="sales-messages" role="log" aria-live="polite" aria-label="Сообщения чата"></div>
+    <div class="sales-topics" aria-label="Темы вопросов">
+      <button type="button" data-topic="labels">Этикетки</button>
+      <button type="button" data-topic="ribbons">Риббоны</button>
+      <button type="button" data-topic="printing">Печать тиража</button>
+      <button type="button" data-topic="delivery">Доставка и склад</button>
+    </div>
+    <form class="sales-question">
+      <label for="sales-question">Ваш вопрос</label>
+      <div class="sales-input-row">
+        <input id="sales-question" name="question" maxlength="240" required placeholder="Например, нужна ли лента для Термо ЭКО?">
+        <button type="submit">Спросить</button>
+      </div>
+    </form>
+    <p class="sales-contact"><a href="tel:+79877532533">Позвонить в отдел заказов</a><a href="#quote" data-chat-close>Заявка на тираж</a></p>
+    <a href="#callback" data-chat-close data-callback hidden>Заказать звонок менеджера</a>
+  </dialog>
+</aside>
 </body></html>
