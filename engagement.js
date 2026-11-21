@@ -7,26 +7,39 @@
   const messages = dialog.querySelector(".sales-messages");
   const launch = widget.querySelector("[data-chat-open]");
   const enabled = widget.dataset.engagement === "live";
-  const topics = [
-    { key: "delivery", pattern: /достав|склад|самовывоз|адрес|проезд|график|оплат/u, answer: "Доставляем транспортными компаниями и своим транспортом. Возможность самовывоза согласуйте с менеджером. Склад в Дзержинске, Автозаводское шоссе, 85И. Схема проезда есть в контактах.", link: "#warehouse", label: "Схема проезда" },
-    { key: "ribbons", pattern: /риббон|красящ|wax|resin|лента|ленту/u, answer: "Для прямой термопечати на Термо ЭКО и Термо ТОП красящая лента не нужна. Для термотрансферной печати подбираем риббон по материалу этикетки, модели принтера, втулке и намотке.", link: "#guide", label: "Как выбрать риббон" },
-    { key: "printing", pattern: /тираж|макет|логотип|цветн|цифров|флексо/u, answer: "Для расчёта печати нужны размер, тираж, поверхность и условия применения. Если есть макет или фотография этикетки, их можно приложить к письму вместе с заявкой.", link: "#quote", label: "Собрать заявку" },
-    { key: "labels", pattern: /этикет|эко|топ|принтер|втулк|термо|намот/u, answer: "Термо ЭКО подходит для краткосрочной маркировки в сухих условиях. Термо ТОП защищён от истирания и влаги лучше ЭКО. Сверьте размеры этикетки, втулку и внешний диаметр рулона с инструкцией к принтеру.", link: "#catalog", label: "Открыть каталог" },
-    { key: "price", pattern: /цен|стоим|налич|срок|сколько/u, answer: "Цены и единицы продажи указаны в каталоге. Корзина рассчитывает сумму, а наличие и срок поставки подтвердит менеджер.", link: "#catalog", label: "Открыть каталог" },
-  ];
-
+  const advise = window.createPromlabelAdvisor(window.PromlabelProducts ?? []);
+  const telegramAccount = widget.dataset.telegram;
+  const telegram = /^[a-zA-Z][a-zA-Z0-9_]{3,31}$/.test(telegramAccount ?? "") ? telegramAccount : "";
+  const managerLink = dialog.querySelector("[data-manager-contact]");
   let lastTopic = "";
   let source = "callback";
   let requestId;
-  function addMessage(text, who, topic) {
+
+  function contactAction(draft) {
+    if (!telegram) return {link:"tel:+79877532533", label:"Позвонить менеджеру"};
+    const url = new URL("https://t.me/" + telegram);
+    if (draft) url.searchParams.set("text", draft);
+    return {link:url.href, label:"Написать Антону Фёдорову в Telegram", external:true};
+  }
+
+  function addMessage(text, who, actions = []) {
     const line = document.createElement("p");
     line.className = "sales-" + who;
     line.textContent = text;
-    if (topic) {
+    for (const action of actions) {
       const link = document.createElement("a");
-      link.href = topic.link;
-      link.textContent = topic.label;
-      link.addEventListener("click", () => dialog.close());
+      link.href = action.link;
+      link.textContent = action.label;
+      if (action.query) link.dataset.catalogQuery = action.query;
+      if (action.external) {
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+      } else if (action.link.startsWith("#")) {
+        link.addEventListener("click", () => {
+          dialog.close();
+          if (action.link === "#callback") source = "chat";
+        });
+      }
       line.append(document.createElement("br"), link);
     }
     messages.append(line);
@@ -36,9 +49,18 @@
   function answer(question, topic) {
     if (!question.trim()) return;
     addMessage(question, "visitor");
-    lastTopic = topic?.key ?? "other";
-    addMessage(topic?.answer ?? "По этому вопросу лучше уточнить у менеджера. Могу подсказать по этикеткам, риббонам, печати и доставке.", "reply", topic);
+    const reply = advise(question, topic);
+    if (reply.topic) lastTopic = ["labels","ribbons","printing","delivery","price"].includes(reply.topic) ? reply.topic : "other";
+    const actions = reply.actions ?? [];
+    if (reply.handoff) {
+      actions.push(contactAction(reply.draft));
+      if (enabled) actions.push({link:"#callback", label:"Заказать обратный звонок"});
+    }
+    addMessage(reply.text, "reply", actions);
   }
+  Object.assign(managerLink, {href:contactAction().link, textContent:contactAction().label});
+  if (telegram) Object.assign(managerLink, {target:"_blank", rel:"noopener noreferrer"});
+
   async function post(path, payload) {
     return fetch(path, {
       method: "POST",
@@ -54,7 +76,7 @@
     if (enabled) count("chat");
   });
   for (const button of dialog.querySelectorAll("[data-topic]")) {
-    button.addEventListener("click", () => answer(button.textContent, topics.find(topic => topic.key === button.dataset.topic)));
+    button.addEventListener("click", () => answer(button.textContent, button.dataset.topic));
   }
   for (const link of dialog.querySelectorAll("[data-chat-close]")) {
     link.addEventListener("click", () => dialog.close());
@@ -63,8 +85,7 @@
     event.preventDefault();
     const input = event.currentTarget.elements.question;
     const question = input.value.trim();
-    const normalized = question.toLocaleLowerCase("ru");
-    answer(question, topics.find(topic => topic.pattern.test(normalized)));
+    answer(question);
     input.value = "";
   });
 
