@@ -72,3 +72,45 @@ footer{background:#e7ebdf;border-top:1px solid var(--line);padding:clamp(36px,4.
 .callback-section .callback-consent input { width: 1rem; flex: 0 0 1rem; }
 .callback-section .callback-trap { position: absolute; inset-inline-start: -9999px; }
 @media (max-width: 650px) { .callback-section:not([hidden]) { grid-template-columns: 1fr; } }
+
+:root {
+  --ink: #f3f4f6;
+  --muted: #c4c9d0;
+  --page: #22262b;
+  --panel: #2d3239;
+  --deep: #181b1f;
+  --line: #484e57;
+  --lime: #e8ff68;
+  --accent-ink: #20252a;
+  color-scheme: dark;
+}
+:focus-visible { outline-color: var(--lime); }
+.site-head { background: var(--deep); }
+.wordmark img { border-radius: 9px; }
+.order-button { border-color: var(--lime); color: var(--lime); }
+.order-button:hover { background: #414632; }
+.order-button [data-cart-count] { background: var(--lime); color: var(--accent-ink); }
+.hero .eyebrow, .footer-head .eyebrow { color: var(--lime); }
+.hero-image { background: var(--panel); border: 1px solid var(--line); box-shadow: 0 12px 32px #10111445; }
+.btn-primary, .btn-primary:hover { color: var(--accent-ink); }
+.btn-primary { border: 1px solid transparent; }
+.text-link { text-decoration-color: var(--lime); }
+.context-band { background: var(--panel); }
+.context-items svg { color: var(--lime); }
+.product-photos figure { background: var(--panel); border: 1px solid var(--line); }
+.product-photos figcaption { padding: 14px 18px; }
+.production { background: var(--deep); color: var(--ink); border-block: 1px solid var(--line); }
+.prod-list article, .prod-list article:last-child { border-color: var(--line); }
+footer { background: var(--deep); }
+.footer-mail:hover, .sales-contact a:hover { color: var(--lime); }
+.foot-note { border-color: var(--line); color: var(--muted); }
+.brief-card, .sales-messages p { background: var(--panel); }
+.brief-fields :is(input,select,textarea), .catalog-shortcuts a { border-color: #626975; }
+.catalog-shortcuts a:hover { background: var(--panel); border-color: var(--lime); }
+.sales-launch { background: var(--lime); color: var(--accent-ink); box-shadow: 0 6px 24px #1119; }
+.sales-close, .sales-topics button, .sales-input-row input { background: var(--panel); color: var(--ink); border-color: var(--line); }
+.sales-input-row button { color: var(--accent-ink); }
+.sales-messages .sales-visitor { background: #3c4430; }
+.sales-contact a, .sales-reply a { color: var(--lime); }
+.callback-consent a { color: var(--lime); }
+.skip { background: var(--lime); color: var(--accent-ink); }

@@ -7,7 +7,7 @@
   const groups = ["Все", "Этикетки", "Упаковка", "Расходники", "Оборудование"];
   const products = new Map(items.map(item => [item.id, item]));
   const storageKey = "promlabel52:request:v1";
-  const mail = "zakaz@promlabel52.ru";
+  const checkoutEnabled = host.dataset.checkout === "live";
   const maxQty = 999999999;
   const fmt = new Intl.NumberFormat("ru-RU", {maximumFractionDigits: 2});
   const escape = value => String(value).replace(/[&<>"']/g, char => ({"&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"}[char]));
@@ -21,19 +21,45 @@
   }
   const hasPrice = item => Number.isFinite(item.price) && item.price >= 0;
   const rub = value => fmt.format(value) + " ₽";
+  function totalQuantity(id) {
+    return rows.filter(row => row.id === id).reduce((sum, row) => sum + row.qty, 0);
+  }
+  function priceFor(item, quantity) {
+    return (item.tiers ?? []).reduce((price, tier) => quantity >= tier.qty ? tier.price : price, item.price);
+  }
   function unitPrice(id) {
-    const item = products.get(id);
-    const totalQty = rows.filter(row => row.id === id).reduce((sum, row) => sum + row.qty, 0);
-    return (item.tiers ?? []).reduce((price, tier) => totalQty >= tier.qty ? tier.price : price, item.price);
+    return priceFor(products.get(id), totalQuantity(id));
   }
   function subtotal(row) {
     return Math.round(unitPrice(row.id) * 100) * row.qty / 100;
   }
-  const lineCost = row => hasPrice(products.get(row.id)) ? rub(subtotal(row)) : "По запросу";
-  function priceTable(i) {
-    if (!hasPrice(i)) return "";
-    const levels = [{qty: i.minQty ?? 1, price: i.price}, ...(i.tiers ?? [])];
-    return '<div class="pc-pricing"><strong>Цена за ' + i.unit + '</strong><ul>' + levels.map(t => '<li><span>От ' + fmt.format(t.qty) + ' ' + i.unit + '</span><b>' + rub(t.price) + '</b></li>').join("") + '</ul></div>';
+  const lineCost = row => {
+    const item = products.get(row.id);
+    return hasPrice(item) ? rub(subtotal(row)) + " · " + rub(unitPrice(item.id)) + " / " + item.unit : "По запросу";
+  };
+  function priceTable(item, alreadyInCart) {
+    if (!hasPrice(item)) return "";
+    const levels = [{qty: item.minQty ?? 1, price: item.price}, ...(item.tiers ?? [])];
+    return '<div class="pc-pricing"><strong>Цена за ' + item.unit + '</strong><ul>' + levels.map(tier => {
+      const remaining = Math.max(tier.qty - alreadyInCart, item.minQty ?? 1);
+      const step = item.step ?? 1;
+      const min = item.minQty ?? 1;
+      const target = min + Math.ceil((remaining - min) / step) * step;
+      return '<li><button type="button" data-qty-choice="' + target + '">От ' + fmt.format(tier.qty) + ' ' + item.unit
+        + '</button><b>' + rub(tier.price) + '</b></li>';
+    }).join("") + '</ul></div>';
+  }
+  function nextTier(row) {
+    const item = products.get(row.id);
+    const qty = totalQuantity(row.id);
+    const tier = item.tiers?.find(level => level.qty > qty && level.price < unitPrice(row.id));
+    if (!tier) return "";
+    const min = item.minQty ?? 1;
+    const step = item.step ?? 1;
+    const target = min + Math.ceil((row.qty + tier.qty - qty - min) / step) * step;
+    if (target > maxQty) return "";
+    return '<button type="button" data-next-tier="' + target + '">Увеличить до ' + fmt.format(target)
+      + ' ' + item.unit + ' · ' + rub(tier.price) + ' / ' + item.unit + '</button>';
   }
   function orderSummary() {
     const priced = rows.filter(r => hasPrice(products.get(r.id)));
@@ -103,8 +129,22 @@
   }
   function configure(id, source) {
     const i = products.get(id);
-    showDialog('<h2 id="pc-modal-title" tabindex="-1">' + i.name + '</h2><p>' + i.description + '</p>' + priceTable(i) + '<form class="pc-fields"><label>Количество, ' + i.unit + '<input name="qty" type="number" ' + quantityAttrs(i, i.minQty ?? 1) + '>' + (i.step > 1 ? '<small>Кратно ' + i.step + ' ' + i.unit + '</small>' : '') + '</label><label>Параметры позиции<textarea name="spec" maxlength="300" placeholder="' + i.hint + '"></textarea></label><p class="pc-feedback" role="status"></p><button class="pc-primary">Добавить в заявку</button></form>', source);
+    showDialog('<h2 id="pc-modal-title" tabindex="-1">' + i.name + '</h2><p>' + i.description + '</p>' + priceTable(i, totalQuantity(id)) + '<form class="pc-fields"><label>Количество, ' + i.unit + '<input name="qty" type="number" ' + quantityAttrs(i, i.minQty ?? 1) + '>' + (i.step > 1 ? '<small>Кратно ' + i.step + ' ' + i.unit + '</small>' : '') + '</label><label>Параметры позиции<textarea name="spec" maxlength="300" placeholder="' + i.hint + '"></textarea></label><p class="pc-live-price" role="status"></p><p class="pc-feedback" role="status"></p><button class="pc-primary">В корзину</button></form>', source);
     const form = dialog.querySelector("form");
+    const qtyInput = form.elements.qty;
+    const priceStatus = form.querySelector(".pc-live-price");
+    const updatePrice = () => {
+      const qty = Number(qtyInput.value);
+      if (!hasPrice(i) || !quantityAllowed(i, qty)) { priceStatus.textContent = ""; return; }
+      const unit = priceFor(i, totalQuantity(id) + qty);
+      priceStatus.textContent = rub(Math.round(unit * 100) * qty / 100) + " за " + fmt.format(qty)
+        + " " + i.unit + " · " + rub(unit) + " / " + i.unit;
+    };
+    qtyInput.addEventListener("input", updatePrice);
+    for (const button of dialog.querySelectorAll("[data-qty-choice]")) {
+      button.addEventListener("click", () => { qtyInput.value = button.dataset.qtyChoice; updatePrice(); });
+    }
+    updatePrice();
     form.onsubmit = e => {
       e.preventDefault();
       const qty = Number(form.elements.qty.value);
@@ -118,90 +158,143 @@
       if (found) found.qty += qty;
       else rows.push({id, qty, spec});
       save();
-      showDialog('<h2 id="pc-modal-title" tabindex="-1">Добавлено в заявку</h2><p>' + i.name + ' · ' + fmt.format(qty) + ' ' + i.unit + '</p><div class="pc-actions"><button class="pc-primary" data-review>Открыть заявку</button><button class="pc-secondary" data-continue>Продолжить выбор</button></div>', source);
+      showDialog('<h2 id="pc-modal-title" tabindex="-1">Товар в корзине</h2><p>' + i.name + ' · ' + fmt.format(qty) + ' ' + i.unit + '</p><div class="pc-actions"><button class="pc-primary" data-review>Открыть корзину</button><button class="pc-secondary" data-continue>Продолжить выбор</button></div>', source);
       dialog.querySelector("[data-review]").onclick = () => cart(source);
       dialog.querySelector("[data-continue]").onclick = () => dialog.close();
     };
   }
   const contacts = {company: "", contact: ""};
+  function telegramCart() {
+    const account = document.querySelector(".sales-help")?.dataset.telegram;
+    if (!/^[a-zA-Z][a-zA-Z0-9_]{3,31}$/.test(account ?? "")) return "";
+    const text = ["Здравствуйте! Хочу оформить заказ в ПромЛейбл.", ...rows.map((row, ix) => {
+      const item = products.get(row.id);
+      return (ix + 1) + ". " + item.name + " — " + fmt.format(row.qty) + " " + item.unit + " · " + lineCost(row);
+    }), orderSummary()].join("\n");
+    const url = new URL("https://t.me/" + account);
+    if (text.length <= 2400) url.searchParams.set("text", text);
+    return url.href;
+  }
   function cart(source) {
-    const summary = orderSummary();
-    const list = rows.map((r, ix) => {
-      const i = products.get(r.id);
-      return '<li><strong>' + i.name + '</strong>' + (r.spec ? '<small>' + escape(r.spec) + '</small>' : '') + '<div class="pc-row"><label>Количество, ' + i.unit + '<input form="pc-order" data-index="' + ix + '" type="number" ' + quantityAttrs(i, r.qty) + '></label><span class="pc-price">' + lineCost(r) + '</span><button data-delete="' + ix + '" aria-label="Удалить ' + i.name + '">Удалить</button></div></li>';
+    const list = rows.map((row, ix) => {
+      const item = products.get(row.id);
+      return '<li><strong>' + item.name + '</strong>' + (row.spec ? '<small>' + escape(row.spec) + '</small>' : '')
+        + '<div class="pc-row"><label>Количество, ' + item.unit + '<input form="pc-order" data-index="' + ix
+        + '" type="number" ' + quantityAttrs(item, row.qty) + '></label><span class="pc-price">' + lineCost(row)
+        + '</span><button type="button" data-delete="' + ix + '" aria-label="Удалить ' + item.name + '">Удалить</button></div>'
+        + '<div class="pc-tier-select">' + nextTier(row) + '</div></li>';
     }).join("");
-    showDialog('<h2 id="pc-modal-title" tabindex="-1">Ваша заявка</h2>' + (!rows.length ? '<p>Добавьте товары из каталога и укажите нужное количество.</p><a href="#catalog" class="pc-primary" data-return>Перейти в каталог</a>' : '<ul class="pc-lines">' + list + '</ul><p class="pc-summary">' + summary + '</p><form id="pc-order" class="pc-fields"><label>Компания <span>· необязательно</span><input name="company" maxlength="120" autocomplete="organization" value="' + escape(contacts.company) + '"></label><label>Контакт для ответа<input name="contact" required maxlength="150" placeholder="Телефон или email" value="' + escape(contacts.contact) + '"></label><div class="pc-actions"><button class="pc-secondary" value="file" formnovalidate>Скачать заявку .txt</button></div><p class="pc-note">Скачайте заявку и отправьте её в отдел продаж на ' + mail + '.</p><p role="status" class="pc-feedback"></p></form>'), source);
+    const formMarkup = checkoutEnabled
+      ? '<label>Компания <span>· необязательно</span><input name="company" maxlength="120" autocomplete="organization" value="' + escape(contacts.company)
+        + '"></label><label>Телефон или email для ответа<input name="contact" required maxlength="150" value="' + escape(contacts.contact)
+        + '"></label><label class="pc-consent"><input name="consent" type="checkbox" required> <span>Согласен на обработку контактных данных для заказа. '
+        + '<a href="/order-consent.html" target="_blank" rel="noopener">Текст согласия</a></span></label>'
+        + '<button class="pc-primary" type="submit">Оформить заказ</button><p role="status" class="pc-feedback"></p>'
+      : '<p class="pc-note">Заказ можно согласовать с Антоном. В Telegram откроется черновик с позициями из корзины.</p>'
+        + '<div class="pc-actions"><a class="pc-primary" data-order-telegram target="_blank" rel="noopener noreferrer">Отправить заказ в Telegram</a>'
+        + '<a class="pc-secondary" href="tel:+79877532533">Позвонить</a></div>';
+    showDialog('<h2 id="pc-modal-title" tabindex="-1">Корзина</h2>' + (!rows.length
+      ? '<p>Корзина пуста. Выберите товары в каталоге.</p><a href="#catalog" class="pc-primary" data-return>Перейти в каталог</a>'
+      : '<ul class="pc-lines">' + list + '</ul><p class="pc-summary" aria-live="polite">' + orderSummary()
+        + '</p><form id="pc-order" class="pc-fields">' + formMarkup + '</form>'), source);
     if (!rows.length) {
       dialog.querySelector("[data-return]").onclick = () => dialog.close();
       return;
     }
     const form = dialog.querySelector("form");
-    for (const field of ["company","contact"]) form.elements[field].oninput = () => { contacts[field] = form.elements[field].value; };
-    dialog.querySelectorAll("[data-delete]").forEach(b => b.onclick = () => { rows.splice(Number(b.dataset.delete), 1); save(); cart(source); });
-    dialog.querySelectorAll("[data-index]").forEach(input => input.oninput = () => {
-      const qty = Number(input.value);
+    const telegram = form.querySelector("[data-order-telegram]");
+    const refresh = () => {
+      dialog.querySelectorAll(".pc-price").forEach((el, ix) => { el.textContent = lineCost(rows[ix]); });
+      dialog.querySelectorAll(".pc-tier-select").forEach((el, ix) => { el.innerHTML = nextTier(rows[ix]); });
+      dialog.querySelector(".pc-summary").textContent = orderSummary();
+      if (telegram) {
+        telegram.href = telegramCart();
+        telegram.hidden = !telegramCart();
+        if (telegram.hidden) telegram.removeAttribute("href");
+      }
+    };
+    const quantityInputs = [...dialog.querySelectorAll("[data-index]")];
+    const updateQuantity = input => {
       const row = rows[Number(input.dataset.index)];
+      const qty = Number(input.value);
       if (!quantityAllowed(products.get(row.id), qty)) return;
       row.qty = qty;
       save();
-      dialog.querySelectorAll(".pc-price").forEach((el, ix) => { el.textContent = lineCost(rows[ix]); });
-      dialog.querySelector(".pc-summary").textContent = orderSummary();
+      refresh();
+    };
+    dialog.querySelector("[data-order-telegram]")?.addEventListener("click", event => {
+      const invalid = quantityInputs.find(input => !input.validity.valid);
+      if (invalid) { event.preventDefault(); invalid.reportValidity(); }
     });
-    form.onsubmit = async e => {
-      e.preventDefault();
-      const date = new Date().toLocaleDateString("ru-RU");
-      const subject = (rows.some(row => !hasPrice(products.get(row.id))) ? "Заявка на расчёт от " : "Заказ от ") + date;
-      const body = [subject, contacts.company && "Компания: " + contacts.company, contacts.contact && "Контакт: " + contacts.contact, ...rows.map((r, ix) => {
-        const i = products.get(r.id);
-        return (ix + 1) + ". " + i.name + " — " + fmt.format(r.qty) + " " + i.unit + (i.kind === "example" ? "\n   " + i.description : "") + (hasPrice(i) ? "\n   Цена за " + i.unit + ": " + rub(unitPrice(i.id)) : "") + (r.spec ? "\n   " + r.spec : "") + "\n   Стоимость: " + lineCost(r);
-      }), dialog.querySelector(".pc-summary").textContent].filter(Boolean).join("\r\n\r\n");
+    quantityInputs.forEach(input => {
+      input.addEventListener("input", () => updateQuantity(input));
+      input.addEventListener("blur", () => {
+        if (!input.validity.valid) input.value = rows[Number(input.dataset.index)].qty;
+      });
+    });
+    dialog.querySelectorAll("[data-delete]").forEach(button => {
+      button.onclick = () => { rows.splice(Number(button.dataset.delete), 1); save(); cart(source); };
+    });
+    dialog.querySelectorAll(".pc-tier-select").forEach((el, ix) => {
+      el.onclick = event => {
+        const button = event.target.closest("[data-next-tier]");
+        if (!button) return;
+        quantityInputs[ix].value = button.dataset.nextTier;
+        updateQuantity(quantityInputs[ix]);
+        quantityInputs[ix].focus();
+      };
+    });
+    refresh();
+    form.onsubmit = async event => {
+      event.preventDefault();
+      if (!checkoutEnabled || form.dataset.busy) return;
+      const data = new FormData(form);
+      contacts.company = data.get("company").trim();
+      contacts.contact = data.get("contact").trim();
       const status = form.querySelector("[role=status]");
-      function download() {
-        const url = URL.createObjectURL(new Blob(["\uFEFF", body], {type:"text/plain;charset=utf-8"}));
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "Заявка-Промышленная-этикетка-" + date + ".txt";
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 10000);
+      if (!contacts.contact || data.get("consent") !== "on") {
+        status.textContent = "Укажите контакт и отметьте согласие на обработку данных.";
+        return;
       }
-      if (e.submitter?.value === "file") { download(); status.textContent = "Файл заявки сформирован."; return; }
-      if (!contacts.contact.trim()) { status.textContent = "Укажите телефон или email для ответа."; return; }
-      const payload = {rows, company:contacts.company, contact:contacts.contact.trim()};
-      const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(payload)));
-      const signature = Array.from(new Uint8Array(digest)).join(".");
-      let key = crypto.randomUUID();
-      try {
-        const pending = JSON.parse(sessionStorage.getItem("promlabel:pending"));
-        if (pending?.signature === signature) key = pending.key;
-        sessionStorage.setItem("promlabel:pending", JSON.stringify({key,signature}));
-      } catch {}
-      if (form.dataset.busy) return;
+      const payload = {rows:rows.map(row => ({...row})), company:contacts.company, contact:contacts.contact, consent:true};
       form.dataset.busy = "1";
-      dialog.querySelectorAll("button,input").forEach(el => el.disabled = true);
+      const controls = [...dialog.querySelectorAll("button,input")];
+      controls.forEach(control => { control.disabled = true; });
       const keepOpen = event => event.preventDefault();
-      dialog.addEventListener("cancel",keepOpen);
+      dialog.addEventListener("cancel", keepOpen);
       status.textContent = "Отправляем заказ…";
       try {
-        const response = await fetch("/api/orders", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...payload,key}),signal:AbortSignal.timeout(25000)});
+        const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(payload)));
+        const signature = Array.from(new Uint8Array(digest)).join(".");
+        let key = crypto.randomUUID();
+        try {
+          const pending = JSON.parse(sessionStorage.getItem("promlabel:pending"));
+          if (pending?.signature === signature) key = pending.key;
+          sessionStorage.setItem("promlabel:pending", JSON.stringify({key,signature}));
+        } catch {}
+        const response = await fetch("/api/orders", {
+          method:"POST", headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({...payload,key}), signal:AbortSignal.timeout(25000),
+        });
         const answer = await response.json();
-        if (!response.ok || !answer.number) {
-          status.textContent = answer.error === "mail_unconfigured" ? "Приём заказов через сайт подключается. Скачайте заявку или свяжитесь с отделом продаж: " + mail : "Отправка не подтверждена. Корзина сохранена. Можно повторить попытку.";
-          return;
-        }
-        rows = []; save();
+        if (!response.ok || !answer.number) throw new Error("Order not confirmed");
+        rows = [];
+        save();
         try { sessionStorage.removeItem("promlabel:pending"); } catch {}
-        contacts.company = ""; contacts.contact = "";
-        showDialog('<h2 id="pc-modal-title" tabindex="-1">Заказ № ' + escape(answer.number) + '</h2><p>Почтовый сервис принял письмо для отдела продаж. Мы свяжемся с вами по указанному контакту.</p>', source);
+        contacts.company = "";
+        contacts.contact = "";
+        showDialog('<h2 id="pc-modal-title" tabindex="-1">Заказ № ' + escape(answer.number)
+          + '</h2><p>Заказ отправлен в отдел продаж. Менеджер свяжется с вами по указанному контакту.</p>', source);
       } catch {
-        status.textContent = "Не удалось подтвердить отправку. Корзина сохранена. Попробуйте ещё раз.";
+        status.textContent = "Отправка пока не подтверждена. Корзина сохранена. Попробуйте ещё раз или позвоните в отдел заказов.";
       } finally {
         delete form.dataset.busy;
-        dialog.removeEventListener("cancel",keepOpen);
-        dialog.querySelectorAll("button,input").forEach(el => el.disabled = false);
+        dialog.removeEventListener("cancel", keepOpen);
+        controls.forEach(control => { control.disabled = false; });
       }
     };
   }
-  host.innerHTML = '<div class="pc-heading"><h2>Каталог продукции</h2><p>Выберите товары и количество. Корзина рассчитает стоимость с учётом объёма.</p></div><nav class="catalog-shortcuts" aria-label="Быстрый выбор в каталоге"><a href="#catalog" data-catalog-query="58×40">Этикетки 58×40</a><a href="#catalog" data-catalog-query="100×150">Этикетки 100×150</a><a href="#catalog" data-catalog-query="риббон">Риббоны</a><a href="#guide">Как выбрать</a></nav><div class="pc-tools"><div class="pc-modes" role="group" aria-label="Подбор продукции"><button data-mode="example" type="button">Товары</button><button data-mode="custom" type="button">По своим параметрам</button></div><label class="pc-search"><span>Поиск по каталогу</span><input type="search" placeholder="Название или размер, например 58×40" aria-label="Поиск по названию или размеру"></label></div><p class="pc-mode-note"></p><div class="pc-filters" role="group" aria-label="Группы продукции">' + groups.map(g => '<button type="button" data-filter="' + g + '">' + g + '</button>').join("") + '</div><div class="pc-grid"></div><div class="pc-tail"><span class="pc-result" role="status"></span><button class="pc-secondary" data-more type="button">Показать ещё</button><button class="pc-secondary" type="button" data-cart-open>Моя заявка (<span data-cart-count>0</span>)</button></div>';
+  host.innerHTML = '<div class="pc-heading"><h2>Каталог продукции</h2><p>Выберите товары и количество. Корзина рассчитает стоимость с учётом объёма.</p></div><nav class="catalog-shortcuts" aria-label="Быстрый выбор в каталоге"><a href="#catalog" data-catalog-query="58×40">Этикетки 58×40</a><a href="#catalog" data-catalog-query="100×150">Этикетки 100×150</a><a href="#catalog" data-catalog-query="риббон">Риббоны</a><a href="#guide">Как выбрать</a></nav><div class="pc-tools"><div class="pc-modes" role="group" aria-label="Подбор продукции"><button data-mode="example" type="button">Товары</button><button data-mode="custom" type="button">По своим параметрам</button></div><label class="pc-search"><span>Поиск по каталогу</span><input type="search" placeholder="Название или размер, например 58×40" aria-label="Поиск по названию или размеру"></label></div><p class="pc-mode-note"></p><div class="pc-filters" role="group" aria-label="Группы продукции">' + groups.map(g => '<button type="button" data-filter="' + g + '">' + g + '</button>').join("") + '</div><div class="pc-grid"></div><div class="pc-tail"><span class="pc-result" role="status"></span><button class="pc-secondary" data-more type="button">Показать ещё</button><button class="pc-secondary" type="button" data-cart-open>Корзина (<span data-cart-count>0</span>)</button></div>';
   host.querySelector("input[type=search]").oninput = e => { query = e.target.value; pageSize = 6; drawCards(); };
   drawCards();
   updateCounters();
@@ -229,6 +322,11 @@
       query = shortcut.dataset.catalogQuery;
       host.querySelector("input[type=search]").value = query;
       drawCards();
+    }
+    const custom = e.target.closest("[data-custom-product]");
+    if (custom && products.get(custom.dataset.customProduct)?.kind === "custom") {
+      e.preventDefault();
+      configure(custom.dataset.customProduct, custom);
     }
     const trigger = e.target.closest("[data-cart-open]");
     if (trigger) { e.preventDefault(); cart(trigger); }

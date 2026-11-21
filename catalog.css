@@ -63,3 +63,30 @@
 .pc-pricing ul{padding:0;list-style:none;margin:.4rem 0 0}
 .pc-pricing li{display:flex;justify-content:space-between;padding:.23rem 0;color:#45534a}
 .pc-fields small{display:block;font-weight:400;color:#526057;margin-top:.3rem}
+
+#catalog, .pc-dialog {
+  --pc-ink: var(--ink);
+  --pc-tint: var(--panel);
+  --pc-line: var(--line);
+}
+.pc-card, .pc-modes, .pc-modes button, .pc-filter button, .pc-secondary, .pc-close, .pc-filters button {
+  background: var(--panel);
+}
+.pc-dialog { background: var(--page); }
+.pc-heading p, .pc-group, .pc-card p, .pc-dialog p, .pc-cardfoot span, .pc-mode-note, .pc-result,
+.pc-pricing li, .pc-fields small, .pc-fields label span, .pc-lines small, .pc-row button { color: var(--muted); }
+.pc-dialog input, .pc-dialog textarea, .pc-search input { background: var(--deep); border-color: #626975; }
+.pc-primary, .pc-card button b, .pc-filters button[aria-pressed=true], .pc-modes button[aria-pressed=true] {
+  background: var(--lime); color: var(--accent-ink); border-color: var(--lime);
+}
+.pc-primary:hover, .pc-secondary:hover { filter: brightness(1.1); }
+.pc-dialog :focus-visible, #catalog button:focus-visible { outline-color: var(--lime); }
+.pc-pricing button { border: 0; background: transparent; padding: .3rem 0; text-align: left; color: var(--lime); text-decoration: underline; text-underline-offset: .18em; }
+.pc-tier-select { display: grid; gap: .3rem; margin-top: .55rem; }
+.pc-tier-select button { color: var(--lime); }
+.pc-live-price { margin: 0; }
+.pc-dialog .pc-summary { padding: .8rem; border-radius: .5rem; background: var(--panel); }
+
+.pc-fields .pc-consent { display: flex; align-items: flex-start; gap: .5rem; }
+.pc-fields .pc-consent input { width: auto; margin-top: .2rem; }
+.pc-fields [hidden] { display: none; }
