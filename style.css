@@ -22,3 +22,29 @@ footer{background:#e7ebdf;border-top:1px solid var(--line);padding:clamp(36px,4.
 .warehouse-map-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px; margin-bottom: 12px; }
 .warehouse-map-head h3 { margin: 0; font-size: clamp(1.15rem, 2vw, 1.55rem); }
 .warehouse-map iframe { display: block; width: 100%; height: clamp(260px, 42vw, 360px); border: 0; border-radius: 12px; }
+
+.buyer-guide { padding-block: clamp(42px, 6vw, 82px); }
+.guide-heading { max-width: 65ch; margin-bottom: 24px; }
+.guide-heading h2 { margin: 0; font-size: clamp(2rem, 4vw, 3.6rem); letter-spacing: -.055em; line-height: 1.05; }
+.guide-heading p, .guide-answers p, .brief-card p { color: var(--muted); line-height: 1.55; }
+.guide-grid { display: grid; grid-template-columns: 1fr 1fr; align-items: start; gap: clamp(22px, 4vw, 56px); }
+.guide-answers details { border-block-start: 1px solid var(--line); }
+.guide-answers details:last-child { border-block-end: 1px solid var(--line); }
+.guide-answers summary { padding: 15px 0; font-weight: 700; line-height: 1.4; cursor: pointer; }
+.guide-answers p { margin: 0 0 16px; max-width: 64ch; }
+.brief-card { padding: clamp(18px, 3vw, 32px); border: 1px solid var(--line); border-radius: 14px; background: #fff; }
+.brief-card h3 { margin: 0; font-size: clamp(1.25rem, 2vw, 1.7rem); letter-spacing: -.035em; }
+.brief-card p { margin: 8px 0 16px; }
+.brief-fields:not([hidden]), .brief-pair { display: grid; gap: 12px; }
+.brief-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.brief-fields label { display: grid; gap: 5px; font-size: .94rem; font-weight: 600; }
+.brief-fields :is(input, select, textarea) { width: 100%; min-width: 0; padding: 9px 11px; border: 1px solid #aeb9ad; border-radius: 6px; background: var(--page); color: var(--ink); font-weight: 400; }
+.brief-fields textarea { resize: vertical; }
+.brief-actions, .catalog-shortcuts { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.brief-card .brief-status { margin: 0; }
+.brief-status:empty { display: none; }
+.catalog-shortcuts { margin-block: 0 16px; }
+.catalog-shortcuts a { min-height: 36px; display: inline-flex; align-items: center; padding: 4px 12px; border: 1px solid #aeb9ad; border-radius: 999px; text-decoration: none; }
+.catalog-shortcuts a:hover { background: #e7ebdf; }
+@media (max-width: 760px) { .guide-grid { grid-template-columns: 1fr; } }
+@media (max-width: 440px) { .brief-pair { grid-template-columns: 1fr; } }

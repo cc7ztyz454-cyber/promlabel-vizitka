@@ -201,7 +201,7 @@
       }
     };
   }
-  host.innerHTML = '<div class="pc-heading"><h2>Каталог продукции</h2><p>Выберите товары и количество. Корзина рассчитает стоимость с учётом объёма.</p></div><div class="pc-tools"><div class="pc-modes" role="group" aria-label="Подбор продукции"><button data-mode="example" type="button">Товары</button><button data-mode="custom" type="button">По своим параметрам</button></div><label class="pc-search"><span>Поиск по каталогу</span><input type="search" placeholder="Название или размер, например 58×40" aria-label="Поиск по названию или размеру"></label></div><p class="pc-mode-note"></p><div class="pc-filters" role="group" aria-label="Группы продукции">' + groups.map(g => '<button type="button" data-filter="' + g + '">' + g + '</button>').join("") + '</div><div class="pc-grid"></div><div class="pc-tail"><span class="pc-result" role="status"></span><button class="pc-secondary" data-more type="button">Показать ещё</button><button class="pc-secondary" type="button" data-cart-open>Моя заявка (<span data-cart-count>0</span>)</button></div>';
+  host.innerHTML = '<div class="pc-heading"><h2>Каталог продукции</h2><p>Выберите товары и количество. Корзина рассчитает стоимость с учётом объёма.</p></div><nav class="catalog-shortcuts" aria-label="Быстрый выбор в каталоге"><a href="#catalog" data-catalog-query="58×40">Этикетки 58×40</a><a href="#catalog" data-catalog-query="100×150">Этикетки 100×150</a><a href="#catalog" data-catalog-query="риббон">Риббоны</a><a href="#guide">Как выбрать</a></nav><div class="pc-tools"><div class="pc-modes" role="group" aria-label="Подбор продукции"><button data-mode="example" type="button">Товары</button><button data-mode="custom" type="button">По своим параметрам</button></div><label class="pc-search"><span>Поиск по каталогу</span><input type="search" placeholder="Название или размер, например 58×40" aria-label="Поиск по названию или размеру"></label></div><p class="pc-mode-note"></p><div class="pc-filters" role="group" aria-label="Группы продукции">' + groups.map(g => '<button type="button" data-filter="' + g + '">' + g + '</button>').join("") + '</div><div class="pc-grid"></div><div class="pc-tail"><span class="pc-result" role="status"></span><button class="pc-secondary" data-more type="button">Показать ещё</button><button class="pc-secondary" type="button" data-cart-open>Моя заявка (<span data-cart-count>0</span>)</button></div>';
   host.querySelector("input[type=search]").oninput = e => { query = e.target.value; pageSize = 6; drawCards(); };
   drawCards();
   updateCounters();
@@ -221,6 +221,15 @@
     if (button.dataset.select) configure(button.dataset.select, button);
   });
   document.addEventListener("click", e => {
+    const shortcut = e.target.closest("[data-catalog-query]");
+    if (shortcut) {
+      mode = "example";
+      group = "Все";
+      pageSize = 6;
+      query = shortcut.dataset.catalogQuery;
+      host.querySelector("input[type=search]").value = query;
+      drawCards();
+    }
     const trigger = e.target.closest("[data-cart-open]");
     if (trigger) { e.preventDefault(); cart(trigger); }
   });
