@@ -10,6 +10,12 @@
   const advise = window.createPromlabelAdvisor(window.PromlabelProducts ?? []);
   const telegramAccount = widget.dataset.telegram;
   const telegram = /^[a-zA-Z][a-zA-Z0-9_]{3,31}$/.test(telegramAccount ?? "") ? telegramAccount : "";
+  let maxLink = "";
+  try {
+    const candidate = new URL(widget.dataset.max);
+    if (candidate.origin === "https://max.ru" && !candidate.username && !candidate.password
+        && (candidate.pathname !== "/" || candidate.search)) maxLink = candidate.href;
+  } catch {}
   const managerLink = dialog.querySelector("[data-manager-contact]");
   let lastTopic = "";
   let source = "callback";
@@ -53,6 +59,7 @@
     if (reply.topic) lastTopic = ["labels","ribbons","printing","delivery","price"].includes(reply.topic) ? reply.topic : "other";
     const actions = reply.actions ?? [];
     if (reply.handoff) {
+      if (maxLink) actions.push({link:maxLink, label:"Написать в MAX", external:true});
       actions.push(contactAction(reply.draft));
       if (enabled) actions.push({link:"#callback", label:"Заказать обратный звонок"});
     }
@@ -60,6 +67,13 @@
   }
   Object.assign(managerLink, {href:contactAction().link, textContent:contactAction().label});
   if (telegram) Object.assign(managerLink, {target:"_blank", rel:"noopener noreferrer"});
+  if (maxLink) {
+    for (const link of document.querySelectorAll("[data-max-contact]")) {
+      link.href = maxLink;
+      link.hidden = false;
+    }
+    document.querySelector("[data-messengers]").hidden = false;
+  }
 
   async function post(path, payload) {
     return fetch(path, {

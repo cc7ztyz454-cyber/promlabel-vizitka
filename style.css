@@ -114,3 +114,8 @@ footer { background: var(--deep); }
 .sales-contact a, .sales-reply a { color: var(--lime); }
 .callback-consent a { color: var(--lime); }
 .skip { background: var(--lime); color: var(--accent-ink); }
+
+.contact-messengers:not([hidden]) { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 18px; margin-top: 20px; }
+.sales-contact .btn-primary { color: var(--accent-ink); min-height: 38px; padding: .45rem .75rem; }
+.sales-contact .btn-primary:hover { color: var(--accent-ink); }
+.sales-contact [hidden] { display: none; }

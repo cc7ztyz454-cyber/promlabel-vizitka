@@ -184,6 +184,7 @@
         + '</span><button type="button" data-delete="' + ix + '" aria-label="Удалить ' + item.name + '">Удалить</button></div>'
         + '<div class="pc-tier-select">' + nextTier(row) + '</div></li>';
     }).join("");
+    const maxLink = document.querySelector("[data-max-contact]:not([hidden])")?.href;
     const formMarkup = checkoutEnabled
       ? '<label>Компания <span>· необязательно</span><input name="company" maxlength="120" autocomplete="organization" value="' + escape(contacts.company)
         + '"></label><label>Телефон или email для ответа<input name="contact" required maxlength="150" value="' + escape(contacts.contact)
@@ -191,7 +192,9 @@
         + '<a href="/order-consent.html" target="_blank" rel="noopener">Текст согласия</a></span></label>'
         + '<button class="pc-primary" type="submit">Оформить заказ</button><p role="status" class="pc-feedback"></p>'
       : '<p class="pc-note">Заказ можно согласовать с Антоном. В Telegram откроется черновик с позициями из корзины.</p>'
-        + '<div class="pc-actions"><a class="pc-primary" data-order-telegram target="_blank" rel="noopener noreferrer">Отправить заказ в Telegram</a>'
+        + '<div class="pc-actions">'
+        + (maxLink ? '<a class="pc-primary" href="' + escape(maxLink) + '" target="_blank" rel="noopener noreferrer">Написать в MAX</a>' : '')
+        + '<a class="' + (maxLink ? 'pc-secondary' : 'pc-primary') + '" data-order-telegram target="_blank" rel="noopener noreferrer">Отправить заказ в Telegram</a>'
         + '<a class="pc-secondary" href="tel:+79877532533">Позвонить</a></div>';
     showDialog('<h2 id="pc-modal-title" tabindex="-1">Корзина</h2>' + (!rows.length
       ? '<p>Корзина пуста. Выберите товары в каталоге.</p><a href="#catalog" class="pc-primary" data-return>Перейти в каталог</a>'
