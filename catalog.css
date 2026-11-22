@@ -69,6 +69,7 @@
 }
 .pc-dialog { background: var(--page); }
 .pc-heading p, .pc-group, .pc-card p, .pc-dialog p, .pc-cardfoot span, .pc-mode-note, .pc-result,
+.pc-fields small, .pc-fields label span, .pc-lines small, .pc-row button { color: var(--muted); }
 .pc-dialog input, .pc-dialog textarea, .pc-search input { background: var(--deep); border-color: #626975; }
 .pc-primary, .pc-card button b, .pc-filters button[aria-pressed=true], .pc-modes button[aria-pressed=true] {
   background: var(--lime); color: var(--accent-ink); border-color: var(--lime);
