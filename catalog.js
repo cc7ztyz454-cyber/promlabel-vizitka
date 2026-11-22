@@ -19,55 +19,6 @@
   function quantityAttrs(i, value) {
     return 'min="' + (i.minQty ?? 1) + '" max="' + maxQty + '" step="' + (i.step ?? 1) + '" required value="' + value + '"';
   }
-  const hasPrice = item => Number.isFinite(item.price) && item.price >= 0;
-  const rub = value => fmt.format(value) + " ₽";
-  function totalQuantity(id) {
-    return rows.filter(row => row.id === id).reduce((sum, row) => sum + row.qty, 0);
-  }
-  function priceFor(item, quantity) {
-    return (item.tiers ?? []).reduce((price, tier) => quantity >= tier.qty ? tier.price : price, item.price);
-  }
-  function unitPrice(id) {
-    return priceFor(products.get(id), totalQuantity(id));
-  }
-  function subtotal(row) {
-    return Math.round(unitPrice(row.id) * 100) * row.qty / 100;
-  }
-  const lineCost = row => {
-    const item = products.get(row.id);
-    return hasPrice(item) ? rub(subtotal(row)) + " · " + rub(unitPrice(item.id)) + " / " + item.unit : "По запросу";
-  };
-  function priceTable(item, alreadyInCart) {
-    if (!hasPrice(item)) return "";
-    const levels = [{qty: item.minQty ?? 1, price: item.price}, ...(item.tiers ?? [])];
-    return '<div class="pc-pricing"><strong>Цена за ' + item.unit + '</strong><ul>' + levels.map(tier => {
-      const remaining = Math.max(tier.qty - alreadyInCart, item.minQty ?? 1);
-      const step = item.step ?? 1;
-      const min = item.minQty ?? 1;
-      const target = min + Math.ceil((remaining - min) / step) * step;
-      return '<li><button type="button" data-qty-choice="' + target + '">От ' + fmt.format(tier.qty) + ' ' + item.unit
-        + '</button><b>' + rub(tier.price) + '</b></li>';
-    }).join("") + '</ul></div>';
-  }
-  function nextTier(row) {
-    const item = products.get(row.id);
-    const qty = totalQuantity(row.id);
-    const tier = item.tiers?.find(level => level.qty > qty && level.price < unitPrice(row.id));
-    if (!tier) return "";
-    const min = item.minQty ?? 1;
-    const step = item.step ?? 1;
-    const target = min + Math.ceil((row.qty + tier.qty - qty - min) / step) * step;
-    if (target > maxQty) return "";
-    return '<button type="button" data-next-tier="' + target + '">Увеличить до ' + fmt.format(target)
-      + ' ' + item.unit + ' · ' + rub(tier.price) + ' / ' + item.unit + '</button>';
-  }
-  function orderSummary() {
-    const priced = rows.filter(r => hasPrice(products.get(r.id)));
-    const pending = rows.length - priced.length;
-    if (!priced.length) return "Стоимость и срок подтвердит менеджер.";
-    const total = priced.reduce((sum, r) => sum + Math.round(unitPrice(r.id) * 100) * r.qty, 0) / 100;
-    return (pending ? "По позициям с ценой " : "Итого ") + rub(total) + (pending ? " + по запросу (" + pending + " поз.)" : "");
-  }
   let rows = [];
   try {
     const saved = JSON.parse(localStorage.getItem(storageKey));
@@ -111,40 +62,26 @@
   }
   function drawCards() {
     const terms = normalize(query).split(" ").filter(Boolean);
-    const activeItems = items.filter(i => i.kind === mode).sort((a,b) => Number(hasPrice(b)) - Number(hasPrice(a)));
+    const activeItems = items.filter(i => i.kind === mode);
     const matches = activeItems.filter(i => {
       const searchable = normalize([i.name, i.description, i.group, i.id, i.sourceSku].join(" "));
       return (group === "Все" || i.group === group) && terms.every(t => searchable.includes(t));
     });
     const visible = matches.slice(0, pageSize);
-    host.querySelector(".pc-mode-note").textContent = mode === "example" ? "Цена указана за единицу заказа. Наличие и срок поставки подтвердит менеджер." : "Опишите нужные размеры, материал или модель при добавлении в заявку.";
+    host.querySelector(".pc-mode-note").textContent = mode === "example" ? "Наличие и срок поставки подтвердит менеджер." : "Укажите нужные размеры, материал или модель при добавлении в корзину.";
     host.querySelector(".pc-result").textContent = "Показано " + visible.length + " из " + matches.length;
     host.querySelector("[data-more]").hidden = matches.length <= pageSize;
     host.querySelectorAll("[data-mode]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === mode)));
     host.querySelectorAll("[data-filter]").forEach(b => b.hidden = b.dataset.filter !== "Все" && !activeItems.some(i => i.group === b.dataset.filter));
     host.querySelector(".pc-grid").innerHTML = visible.map(i =>
-      '<article class="pc-card"><span class="pc-group">' + i.group + '</span><h3>' + i.name + '</h3><p>' + i.description + '</p><div class="pc-cardfoot"><span>' + (hasPrice(i) ? rub(i.price) + " / " + i.unit : "Цена по запросу") + '</span><button type="button" data-select="' + i.id + '" aria-label="Выбрать: ' + i.name + '">Выбрать <b aria-hidden="true">+</b></button></div></article>'
+      '<article class="pc-card"><span class="pc-group">' + i.group + '</span><h3>' + i.name + '</h3><p>' + i.description + '</p><div class="pc-cardfoot"><span>' + ("Ед. заказа · " + i.unit) + '</span><button type="button" data-select="' + i.id + '" aria-label="Выбрать: ' + i.name + '">Выбрать <b aria-hidden="true">+</b></button></div></article>'
     ).join("") || '<p class="pc-no-results">Совпадений нет. Попробуйте другой размер или выберите «По своим параметрам».</p>';
     host.querySelectorAll("[data-filter]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.filter === group)));
   }
   function configure(id, source) {
     const i = products.get(id);
-    showDialog('<h2 id="pc-modal-title" tabindex="-1">' + i.name + '</h2><p>' + i.description + '</p>' + priceTable(i, totalQuantity(id)) + '<form class="pc-fields"><label>Количество, ' + i.unit + '<input name="qty" type="number" ' + quantityAttrs(i, i.minQty ?? 1) + '>' + (i.step > 1 ? '<small>Кратно ' + i.step + ' ' + i.unit + '</small>' : '') + '</label><label>Параметры позиции<textarea name="spec" maxlength="300" placeholder="' + i.hint + '"></textarea></label><p class="pc-live-price" role="status"></p><p class="pc-feedback" role="status"></p><button class="pc-primary">В корзину</button></form>', source);
+    showDialog('<h2 id="pc-modal-title" tabindex="-1">' + i.name + '</h2><p>' + i.description + '</p>' + '<form class="pc-fields"><label>Количество, ' + i.unit + '<input name="qty" type="number" ' + quantityAttrs(i, i.minQty ?? 1) + '>' + (i.step > 1 ? '<small>Кратно ' + i.step + ' ' + i.unit + '</small>' : '') + '</label><label>Параметры позиции<textarea name="spec" maxlength="300" placeholder="' + i.hint + '"></textarea></label><p class="pc-feedback" role="status"></p><button class="pc-primary">В корзину</button></form>', source);
     const form = dialog.querySelector("form");
-    const qtyInput = form.elements.qty;
-    const priceStatus = form.querySelector(".pc-live-price");
-    const updatePrice = () => {
-      const qty = Number(qtyInput.value);
-      if (!hasPrice(i) || !quantityAllowed(i, qty)) { priceStatus.textContent = ""; return; }
-      const unit = priceFor(i, totalQuantity(id) + qty);
-      priceStatus.textContent = rub(Math.round(unit * 100) * qty / 100) + " за " + fmt.format(qty)
-        + " " + i.unit + " · " + rub(unit) + " / " + i.unit;
-    };
-    qtyInput.addEventListener("input", updatePrice);
-    for (const button of dialog.querySelectorAll("[data-qty-choice]")) {
-      button.addEventListener("click", () => { qtyInput.value = button.dataset.qtyChoice; updatePrice(); });
-    }
-    updatePrice();
     form.onsubmit = e => {
       e.preventDefault();
       const qty = Number(form.elements.qty.value);
@@ -169,8 +106,8 @@
     if (!/^[a-zA-Z][a-zA-Z0-9_]{3,31}$/.test(account ?? "")) return "";
     const text = ["Здравствуйте! Хочу оформить заказ в ПромЛейбл.", ...rows.map((row, ix) => {
       const item = products.get(row.id);
-      return (ix + 1) + ". " + item.name + " — " + fmt.format(row.qty) + " " + item.unit + " · " + lineCost(row);
-    }), orderSummary()].join("\n");
+      return (ix + 1) + ". " + item.name + " — " + fmt.format(row.qty) + " " + item.unit;
+    })].join("\n");
     const url = new URL("https://t.me/" + account);
     if (text.length <= 2400) url.searchParams.set("text", text);
     return url.href;
@@ -180,9 +117,7 @@
       const item = products.get(row.id);
       return '<li><strong>' + item.name + '</strong>' + (row.spec ? '<small>' + escape(row.spec) + '</small>' : '')
         + '<div class="pc-row"><label>Количество, ' + item.unit + '<input form="pc-order" data-index="' + ix
-        + '" type="number" ' + quantityAttrs(item, row.qty) + '></label><span class="pc-price">' + lineCost(row)
-        + '</span><button type="button" data-delete="' + ix + '" aria-label="Удалить ' + item.name + '">Удалить</button></div>'
-        + '<div class="pc-tier-select">' + nextTier(row) + '</div></li>';
+        + '" type="number" ' + quantityAttrs(item, row.qty) + '></label><button type="button" data-delete="' + ix + '" aria-label="Удалить ' + item.name + '">Удалить</button></div></li>';
     }).join("");
     const maxLink = document.querySelector("[data-max-contact]:not([hidden])")?.href;
     const formMarkup = checkoutEnabled
@@ -198,23 +133,19 @@
         + '<a class="pc-secondary" href="tel:+79877532533">Позвонить</a></div>';
     showDialog('<h2 id="pc-modal-title" tabindex="-1">Корзина</h2>' + (!rows.length
       ? '<p>Корзина пуста. Выберите товары в каталоге.</p><a href="#catalog" class="pc-primary" data-return>Перейти в каталог</a>'
-      : '<ul class="pc-lines">' + list + '</ul><p class="pc-summary" aria-live="polite">' + orderSummary()
-        + '</p><form id="pc-order" class="pc-fields">' + formMarkup + '</form>'), source);
+      : '<ul class="pc-lines">' + list + '</ul><form id="pc-order" class="pc-fields">' + formMarkup + '</form>'), source);
     if (!rows.length) {
       dialog.querySelector("[data-return]").onclick = () => dialog.close();
       return;
     }
     const form = dialog.querySelector("form");
     const telegram = form.querySelector("[data-order-telegram]");
-    const refresh = () => {
-      dialog.querySelectorAll(".pc-price").forEach((el, ix) => { el.textContent = lineCost(rows[ix]); });
-      dialog.querySelectorAll(".pc-tier-select").forEach((el, ix) => { el.innerHTML = nextTier(rows[ix]); });
-      dialog.querySelector(".pc-summary").textContent = orderSummary();
-      if (telegram) {
-        telegram.href = telegramCart();
-        telegram.hidden = !telegramCart();
-        if (telegram.hidden) telegram.removeAttribute("href");
-      }
+    const refreshContactLink = () => {
+      if (!telegram) return;
+      const url = telegramCart();
+      telegram.hidden = !url;
+      if (url) telegram.href = url;
+      else telegram.removeAttribute("href");
     };
     const quantityInputs = [...dialog.querySelectorAll("[data-index]")];
     const updateQuantity = input => {
@@ -223,7 +154,7 @@
       if (!quantityAllowed(products.get(row.id), qty)) return;
       row.qty = qty;
       save();
-      refresh();
+      refreshContactLink();
     };
     dialog.querySelector("[data-order-telegram]")?.addEventListener("click", event => {
       const invalid = quantityInputs.find(input => !input.validity.valid);
@@ -238,16 +169,7 @@
     dialog.querySelectorAll("[data-delete]").forEach(button => {
       button.onclick = () => { rows.splice(Number(button.dataset.delete), 1); save(); cart(source); };
     });
-    dialog.querySelectorAll(".pc-tier-select").forEach((el, ix) => {
-      el.onclick = event => {
-        const button = event.target.closest("[data-next-tier]");
-        if (!button) return;
-        quantityInputs[ix].value = button.dataset.nextTier;
-        updateQuantity(quantityInputs[ix]);
-        quantityInputs[ix].focus();
-      };
-    });
-    refresh();
+    refreshContactLink();
     form.onsubmit = async event => {
       event.preventDefault();
       if (!checkoutEnabled || form.dataset.busy) return;
@@ -297,7 +219,7 @@
       }
     };
   }
-  host.innerHTML = '<div class="pc-heading"><h2>Каталог продукции</h2><p>Выберите товары и количество. Корзина рассчитает стоимость с учётом объёма.</p></div><nav class="catalog-shortcuts" aria-label="Быстрый выбор в каталоге"><a href="#catalog" data-catalog-query="58×40">Этикетки 58×40</a><a href="#catalog" data-catalog-query="100×150">Этикетки 100×150</a><a href="#catalog" data-catalog-query="риббон">Риббоны</a><a href="#guide">Как выбрать</a></nav><div class="pc-tools"><div class="pc-modes" role="group" aria-label="Подбор продукции"><button data-mode="example" type="button">Товары</button><button data-mode="custom" type="button">По своим параметрам</button></div><label class="pc-search"><span>Поиск по каталогу</span><input type="search" placeholder="Название или размер, например 58×40" aria-label="Поиск по названию или размеру"></label></div><p class="pc-mode-note"></p><div class="pc-filters" role="group" aria-label="Группы продукции">' + groups.map(g => '<button type="button" data-filter="' + g + '">' + g + '</button>').join("") + '</div><div class="pc-grid"></div><div class="pc-tail"><span class="pc-result" role="status"></span><button class="pc-secondary" data-more type="button">Показать ещё</button><button class="pc-secondary" type="button" data-cart-open>Корзина (<span data-cart-count>0</span>)</button></div>';
+  host.innerHTML = '<div class="pc-heading"><h2>Каталог продукции</h2><p>Выберите товары и укажите количество для заказа.</p></div><nav class="catalog-shortcuts" aria-label="Быстрый выбор в каталоге"><a href="#catalog" data-catalog-query="58×40">Этикетки 58×40</a><a href="#catalog" data-catalog-query="100×150">Этикетки 100×150</a><a href="#catalog" data-catalog-query="риббон">Риббоны</a><a href="#guide">Как выбрать</a></nav><div class="pc-tools"><div class="pc-modes" role="group" aria-label="Подбор продукции"><button data-mode="example" type="button">Товары</button><button data-mode="custom" type="button">По своим параметрам</button></div><label class="pc-search"><span>Поиск по каталогу</span><input type="search" placeholder="Название или размер, например 58×40" aria-label="Поиск по названию или размеру"></label></div><p class="pc-mode-note"></p><div class="pc-filters" role="group" aria-label="Группы продукции">' + groups.map(g => '<button type="button" data-filter="' + g + '">' + g + '</button>').join("") + '</div><div class="pc-grid"></div><div class="pc-tail"><span class="pc-result" role="status"></span><button class="pc-secondary" data-more type="button">Показать ещё</button><button class="pc-secondary" type="button" data-cart-open>Корзина (<span data-cart-count>0</span>)</button></div>';
   host.querySelector("input[type=search]").oninput = e => { query = e.target.value; pageSize = 6; drawCards(); };
   drawCards();
   updateCounters();
